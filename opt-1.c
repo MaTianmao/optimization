@@ -19,7 +19,7 @@ void benchmark(double *v, double *dest){
 int main(){
     double *a = (double *)malloc(sizeof(double) * MAX);
     memset(a, 0, sizeof(a));
-    double ans;
+    double ans = 1;
     double start, end;
 
     //warm up

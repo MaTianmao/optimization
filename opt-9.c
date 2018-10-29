@@ -2,20 +2,20 @@
 
 //loop unrolling 8*1
 void benchmark(double *v, double *dest){
-    double sum = 0;
+    double sum = 1;
     int i; 
     for(i = 0; i < MAX; i += 8){
         sum = sum * (((v[i] * v[i + 1]) * (v[i + 2] * v[i + 3])) * \
          ((v[i + 4] * v[i + 5]) * (v[i + 6] * v[i + 7])));
     }
     for(; i < MAX; i++) sum = sum * v[i];
-    *dest = sum;
+    *dest = *dest * sum;
 }
 
 int main(){
     double *a = (double *)malloc(sizeof(double) * MAX);
     memset(a, 0, sizeof(a));
-    double ans;
+    double ans = 1;
     double start, end;
 
     //warm up

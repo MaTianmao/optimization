@@ -97,11 +97,11 @@ void benchmark(double *v, double *dest){
 ```c
 //not read memory many times
 void benchmark(double *v, double *dest){
-    double sum = 0;
+    double sum = 1;
     for(int i = 0; i < MAX; i++){
         sum = sum * v[i];
     }
-    *dest = sum;
+    *dest = *dest * sum;
 }
 ```
 
@@ -246,13 +246,13 @@ benchmark:
 ```c
 //loop unrolling 2*1
 void benchmark(double *v, double *dest){
-    double sum = 0;
+    double sum = 1;
     int i; 
     for(i = 0; i < MAX; i += 2){
         sum = (sum * v[i]) * v[i + 1];
     }
     for(; i < MAX; i++) sum = sum * v[i];
-    *dest = sum;
+    *dest = *dest * sum;
 }
 ```
 
@@ -277,13 +277,13 @@ void benchmark(double *v, double *dest){
 ```c
 //loop unrolling 2*1a
 void benchmark(double *v, double *dest){
-    double sum = 0;
+    double sum = 1;
     int i; 
     for(i = 0; i < MAX; i += 2){
         sum = sum * (v[i] * v[i + 1]);
     }
     for(; i < MAX; i++) sum = sum * v[i];
-    *dest = sum;
+    *dest = *dest * sum;
 }
 ```
 

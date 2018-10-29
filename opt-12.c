@@ -1,17 +1,18 @@
 #include "common.h"
-
-//loop unrolling 16*1
+#include <immintrin.h>
+//using SIMD and loop unrolling 4*1
 void benchmark(double *v, double *dest){
-    double sum = 1;
-    int i; 
+    __m256d sum = _mm256_setzero_pd();
+    int i;
     for(i = 0; i < MAX; i += 16){
-        sum = sum * ((((v[i] * v[i + 1]) * (v[i + 2] * v[i + 3])) * \
-         ((v[i + 4] * v[i + 5]) * (v[i + 6] * v[i + 7]))) * \
-         (((v[i + 8] * v[i + 9]) * (v[i + 10] * v[i + 11])) * \
-         ((v[i + 12] * v[i + 13]) * (v[i + 14] * v[i + 15]))));
+        sum = _mm256_mul_pd(sum, _mm256_mul_pd(_mm256_mul_pd(_mm256_loadu_pd(v + i), _mm256_loadu_pd(v + i + 4)), \
+                            _mm256_mul_pd(_mm256_loadu_pd(v + i + 8), _mm256_loadu_pd(v + i + 12))));
     }
-    for(; i < MAX; i++) sum = sum * v[i];
-    *dest = *dest * sum;
+    double d[4];
+    _mm256_storeu_pd(d, sum);
+    double ret = d[0] * d[1] * d[2] * d[3];
+    for(; i < MAX; i++) ret = ret * v[i];
+    *dest = *dest * ret;
 }
 
 int main(){

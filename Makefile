@@ -1,7 +1,8 @@
-CFLAGS = -fopenmp -lpthread
+CFLAGS = -fopenmp -lpthread -mavx2
 
 all : opt1.out opt2.out opt3.out opt4.out opt5.out \
-	  opt6.out opt7.out opt8.out opt9.out opt10.out
+	  opt6.out opt7.out opt8.out opt9.out opt10.out \
+	  opt11.out opt12.out opt13.out opt14.out
 
 opt1.out : opt-1.c
 	gcc -o opt1.out opt-1.c common.h $(CFLAGS)
@@ -32,6 +33,18 @@ opt9.out : opt-9.c
 
 opt10.out : opt-10.c
 	gcc -o opt10.out opt-10.c common.h $(CFLAGS)
+
+opt11.out : opt-11.c
+	gcc -o opt11.out opt-11.c common.h $(CFLAGS)
+
+opt12.out : opt-12.c
+	gcc -o opt12.out opt-12.c common.h $(CFLAGS)
+
+opt13.out : opt-13.c
+	gcc -o opt13.out opt-13.c common.h $(CFLAGS)
+
+opt14.out : opt-14.c
+	gcc -o opt14.out opt-14.c common.h $(CFLAGS)
 
 clean:
 	rm -rf *.out

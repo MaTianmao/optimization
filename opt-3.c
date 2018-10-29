@@ -2,17 +2,17 @@
 
 //not read memory many times
 void benchmark(double *v, double *dest){
-    double sum = 0;
+    double sum = 1;
     for(int i = 0; i < MAX; i++){
         sum = sum * v[i];
     }
-    *dest = sum;
+    *dest = *dest * sum;
 }
 
 int main(){
     double *a = (double *)malloc(sizeof(double) * MAX);
     memset(a, 0, sizeof(a));
-    double ans;
+    double ans = 1;
     double start, end;
 
     //warm up
