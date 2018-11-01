@@ -11,6 +11,7 @@
 const int n_iterator = 20;
 double wall_time()
 {
+    //printf("213\n");
 #ifdef GETTIMEOFDAY
     struct timeval t;
     gettimeofday(&t, NULL);

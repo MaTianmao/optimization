@@ -4,6 +4,8 @@
 
 [TOC]
 
+---
+
 ## 实验目标
 
 - 使用不同的程序优化手段，优化`combine`的代码
@@ -560,7 +562,107 @@ void benchmark(double *v, double *dest){
 
 ### 编译参数的选择
 
-前面的测试使用了`CFLAGS = -fopenmp -lpthread -mavx2`的编译参数，没有使用编译优化选项`O2`等，下面测试`O2、O3、Ofast`等选项。
+前面的测试使用了`CFLAGS = -fopenmp -lpthread -mavx2`的编译参数，没有使用编译优化选项`O2`等，下面测试`O1、O2、O3、Ofast`等选项。
 
-#### -O2
+#### 未使用优化选项
+
+```
+//opt1	6.6844 s	origin
+//opt2	5.3796 s 	not judge the boundary
+//opt3	5.4202 s	not read memory many times
+//opt4	3.2891 s	loop unrolling 2*1
+//opt5	2.6468 s	loop unrolling 2*1a
+//opt6	2.9851 s	loop unrolling 2*2
+//opt7	1.8008 s	loop unrolling 4*1
+//opt8	2.4076 s	loop unrolling 4*2
+//opt9	1.5250 s	loop unrolling 8*1
+//opt10 1.3936 s	loop unrolling 16*1
+//opt11 1.7944 s	using SIMD
+//opt12 0.7090 s	using SIMD and loop unrolling 4*1
+//opt13 0.6679 s	using SIMD and loop unrolling 8*1
+//opt14 0.2649 s	using SIMD and loop unrolling 8*1 and multi-threads
+```
+
+#### 使用O1优化
+
+`O1`提供基础级别的优化，比如：
+
+- 在函数完成时如何进行操作
+- 编译器试图合并相同的常量
+- 如何处理汇编代码中的条件和非条件分支
+- 通过优化如何生成汇编语言中的循环
+- 减少或者删除条件分支
+- 减少实现if-then语句所需的条件分支
+- 试图根据指令周期时间重新安排指令
+- 试图确定条件分支最可能的结果
+- 编译器执行第二次检查以便减少调度依赖性
+
+使用`O1`优化后测试的结果为：
+
+```
+//opt1	4.0407 s	origin
+//opt2	4.0973 s	not judge the boundary
+//opt3	1.8086 s	not read memory many times
+//opt4	1.8048 s	loop unrolling 2*1
+//opt5	0.9009 s	loop unrolling 2*1a
+//opt6	0.9006 s	loop unrolling 2*2
+//opt7	0.4465 s	loop unrolling 4*1
+//opt8	0.4471 s	loop unrolling 4*2
+//opt9	0.2483 s	loop unrolling 8*1
+//opt10 0.2512 s	loop unrolling 16*1
+//opt11 0.4461 s	using SIMD
+//opt12 0.1116 s	using SIMD and loop unrolling 4*1
+//opt13 0.0793 s	using SIMD and loop unrolling 8*1
+//opt14 0.0425 s	using SIMD and loop unrolling 8*1 and multi-threads
+```
+
+`O1`优化测试出来效果比不用优化选项提高不少，能够把一些因为开发人员失误写慢的部分进行优化，使得每一步优化带来的变得更加明显，比如`2-3`，在不使用优化选项的时候，几乎没有提高，但是用了`O1`出现了显著提高。
+
+
+
+#### 使用O2优化
+
+`O2`提供了更加高级的代码优化，但是会占用更长的编译时间：
+
+- 在任何指令使用变量前, 强制把存放再内存位置中的所有变量都复制到寄存器中
+- 处理相关的递归的函数调用
+- 对循环执行优化并且删除迭代变量
+- 消除冗余的代码段
+- 通用子表达式消除技术扫描跳转指令
+
+除了以上优化，还有很多优化细节，其中第四点优化在本次实验中深有体会，因为进行计算得到的结果`ans`并未使用，所以使用了`O2`优化后计算时间直接为`0s`，原因是计算`ans`的代码未使用，所以被认为是冗余代码段而消除。
+
+修改正确后，测量得到的运行时间如下：
+
+```
+//opt1	1.8012 s	origin
+//opt2	1.8030 s	not judge the boundary
+//opt3	1.7976 s	not read memory many times
+//opt4	1.7996 s	loop unrolling 2*1
+//opt5	0.8983 s	loop unrolling 2*1a
+//opt6	0.8992 s	loop unrolling 2*2
+//opt7	0.4484 s	loop unrolling 4*1
+//opt8	0.4512 s	loop unrolling 4*2
+//opt9	0.2417 s	loop unrolling 8*1
+//opt10 0.2545 s	loop unrolling 16*1
+//opt11 0.4485 s	using SIMD
+//opt12 0.1116 s	using SIMD and loop unrolling 4*1
+//opt13 0.0825 s	using SIMD and loop unrolling 8*1
+//opt14 0.0449 s	using SIMD and loop unrolling 8*1 and multi-threads
+```
+
+测试结果和`O1`优化基本相同，除了前两个算法，因为`O2`会做一些比较激进的优化，所以直接把前两个算法优化到了和第三个一样快，后面的加速效果类似。
+
+`O2`已经没有太多提高了，所以之后没有测试`O3、Ofast`等编译优化选项。
+
+
+
+## 实验总结
+
+- 本次实验通过从一个简单的原始的算法写起，经过一步步优化，实现了算法性能的`100`倍提高。
+- 通过每一步优化以及性能测试，清楚地认识到了每一步优化带来的性能提高。
+- 通过查阅汇编，以及使用不同的编译选项，了解了编译器能够为程序员做的事情。
+- 学习了使用`SIMD`向量指令编程的方法，以及使用`openmp`进行多线程编程的方法。
+
+
 

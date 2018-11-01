@@ -27,6 +27,7 @@ int main(){
     }
     end = wall_time();
     printf("%d iterators: runtime of this algorimth is: %.4f s\n", n_iterator, (end-start));
+    printf("%.2f\n", ans);
     free(a);
     return 0;
 }
