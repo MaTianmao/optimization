@@ -1,3 +1,6 @@
+#ifndef COMMON_H
+#define COMMON_H
+
 #include <stdio.h>
 #include <time.h>
 #include <sys/time.h>
@@ -18,3 +21,4 @@ double wall_time()
     return 1. * t.tv_sec + 1.e-9 * t.tv_nsec;
 #endif
 }
+#endif //COMMON_H

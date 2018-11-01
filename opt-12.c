@@ -5,8 +5,9 @@ void benchmark(double *v, double *dest){
     __m256d sum = _mm256_setzero_pd();
     int i;
     for(i = 0; i < MAX; i += 16){
-        sum = _mm256_mul_pd(sum, _mm256_mul_pd(_mm256_mul_pd(_mm256_loadu_pd(v + i), _mm256_loadu_pd(v + i + 4)), \
-                            _mm256_mul_pd(_mm256_loadu_pd(v + i + 8), _mm256_loadu_pd(v + i + 12))));
+        sum = _mm256_mul_pd(sum, _mm256_mul_pd( \
+                                 _mm256_mul_pd(_mm256_loadu_pd(v + i), _mm256_loadu_pd(v + i + 4)), \
+                                 _mm256_mul_pd(_mm256_loadu_pd(v + i + 8), _mm256_loadu_pd(v + i + 12))));
     }
     double d[4];
     _mm256_storeu_pd(d, sum);

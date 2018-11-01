@@ -2,7 +2,7 @@
 
 > 完成人：马少楠 2018320823
 
-
+[TOC]
 
 ## 实验目标
 
@@ -27,7 +27,7 @@ end = wall_time();
 printf("%d iterators: runtime of this algorimth is: %.4f s\n", n_iterator, (end-start));
 ```
 
-
+当前的实验测试的编译选项为`CFLAGS = -fopenmp -lpthread -mavx2`，未使用`O2`等优化选项。
 
 ### opt-1
 
@@ -379,9 +379,188 @@ sum2 = sum2 * (v[i + 2] * v[i + 3]);
 
 测试结果表明，使用两个临时变量进行展开，对性能没有提高，所以后续算法实现都是用一个临时变量存储。
 
-到八路和十六路展开的时候性能提升很小，猜测使用八到十六路循环展开可以最大化的消除数据间依赖性。
+循环展开的路数越大，性能提升的空间越小。
 
 
 
 ### opt-11
+
+使用`AVX2`指令集来实现`SIMD`
+
+#### 算法实现
+
+```c
+//using SIMD
+void benchmark(double *v, double *dest){
+    __m256d sum = _mm256_setzero_pd();
+    int i;
+    for(i = 0; i < MAX; i += 4){
+        sum = _mm256_mul_pd(sum, _mm256_loadu_pd(v + i));
+    }
+    double d[4];
+    _mm256_storeu_pd(d, sum);
+    double ret = d[0] * d[1] * d[2] * d[3];
+    for(; i < MAX; i++) ret = ret * v[i];
+    *dest = *dest * ret;
+}
+```
+
+因为数组内元素的类型是`double`，一个`__m256d`类型的长度是`256bit`，正好可以放`4`个`double`，用`SIMD`可以同时4个元素相乘，下标为`4*i`的元素之积记录在`sum`的前`64bit`中，下标为`4*i+1`的元素之积记录在`sum`的第二个`64bit`中，下标为`4*i+2`的元素之积记录在`sum`的第三个`64bit`中，下标为`4*i+3`的元素之积记录在`sum`的第四个`64bit`中。
+
+最后把`sum`变量存储到一个`double`类型的数组中，将`4`个`double`值相乘就是最后结果。
+
+#### 测试结果
+
+```
+20 iterators: runtime of this algorimth is: 1.7944 s
+```
+
+性能相比和前面的`4*1`循环展开差不多，因为我一次指令计算`4`个`double`的乘法，但是因为数据有依赖性，所以不能把指令用流水线处理，所以一次就是计算`4`个`double`，和`4*1`的循环展开从效果上来说是等价的。
+
+
+
+### opt-12
+
+使用`AVX2`指令集加上`4*1`的循环展开
+
+#### 算法实现
+
+```c
+//using SIMD and loop unrolling 4*1
+void benchmark(double *v, double *dest){
+    __m256d sum = _mm256_setzero_pd();
+    int i;
+    for(i = 0; i < MAX; i += 16){
+        sum = _mm256_mul_pd(sum, _mm256_mul_pd( \
+                                 _mm256_mul_pd(_mm256_loadu_pd(v + i), _mm256_loadu_pd(v + i + 4)), \
+                                 _mm256_mul_pd(_mm256_loadu_pd(v + i + 8), _mm256_loadu_pd(v + i + 12))));
+    }
+    double d[4];
+    _mm256_storeu_pd(d, sum);
+    double ret = d[0] * d[1] * d[2] * d[3];
+    for(; i < MAX; i++) ret = ret * v[i];
+    *dest = *dest * ret;
+}
+```
+
+把循环展开和`SIMD`结合，一次读取`4`个`__m256d`类型的数进行计算
+
+#### 测试结果
+
+```
+20 iterators: runtime of this algorimth is: 0.7090 s
+```
+
+效果比起`opt-11`有显著提高
+
+
+
+### opt-13
+
+使用`AVX2`指令集加上`8*1`的循环展开
+
+#### 算法实现
+
+```c
+//using SIMD and loop unrolling 8*1
+void benchmark(double *v, double *dest){
+    __m256d sum = _mm256_setzero_pd();
+    int i;
+    for(i = 0; i < MAX; i += 32){
+        sum = _mm256_mul_pd(sum, _mm256_mul_pd( \
+                        _mm256_mul_pd( \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i), _mm256_loadu_pd(v + i + 4)), \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i + 8), _mm256_loadu_pd(v + i + 12))), \
+                        _mm256_mul_pd( \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i + 16), _mm256_loadu_pd(v + i + 20)), \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i + 24), _mm256_loadu_pd(v + i + 28)))));
+    }
+    double d[4];
+    _mm256_storeu_pd(d, sum);
+    double ret = d[0] * d[1] * d[2] * d[3];
+    for(; i < MAX; i++) ret = ret * v[i];
+    *dest = *dest * ret;
+}
+```
+
+#### 测试结果
+
+```
+20 iterators: runtime of this algorimth is: 0.6679 s
+```
+
+增加展开的路数带来的提高已经不是很大了。
+
+
+
+### opt-14
+
+使用`openmp`多线程结合`AVX2`指令集以及`8*1`循环展开
+
+#### 算法实现
+
+```c
+//using SIMD and loop unrolling 8*1 and multi-threads
+void benchmark(double *v, double *dest){
+    const int THREAD_NUM = 32;
+    omp_set_num_threads(THREAD_NUM);
+    __m256d sum[THREAD_NUM];
+    double ret[THREAD_NUM];
+    for(int i = 0; i < THREAD_NUM; i++) sum[i] = _mm256_setzero_pd();
+#pragma omp parallel
+{
+    int i;
+    int tid = omp_get_thread_num();
+    for(i = tid * (MAX / THREAD_NUM); i < (tid + 1) * (MAX / THREAD_NUM); i += 32){
+        sum[tid] = _mm256_mul_pd(sum[tid], _mm256_mul_pd( \
+                        _mm256_mul_pd( \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i), _mm256_loadu_pd(v + i + 4)), \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i + 8), _mm256_loadu_pd(v + i + 12))), \
+                        _mm256_mul_pd( \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i + 16), _mm256_loadu_pd(v + i + 20)), \
+                        _mm256_mul_pd(_mm256_loadu_pd(v + i + 24), _mm256_loadu_pd(v + i + 28)))));
+    }
+    double d[4];
+    _mm256_storeu_pd(d, sum[tid]);
+    ret[tid] = d[0] * d[1] * d[2] * d[3];
+    for(; i < (tid + 1) * (MAX / THREAD_NUM); i++) ret[tid] = ret[tid] * v[i];
+}
+    double res = 1;
+    for(int i = 0; i < THREAD_NUM; i++) res = res * ret[i];
+    *dest = *dest * res;
+}
+```
+
+将结果存到`THREAD_NUM`个变量中，然后对于每个线程，划分`[tid * (MAX / THREAD_NUM), (tid + 1) * (MAX / THREAD_NUM) - 1]`是该线程的计算范围，然后下面使用类似`opt-13`的实现。
+
+#### 测试结果
+
+对于不同线程数进行了多次测试
+
+```
+//4 threads
+20 iterators: runtime of this algorimth is: 0.6466 s
+//8 threads
+20 iterators: runtime of this algorimth is: 0.4853 s
+//16 threads
+20 iterators: runtime of this algorimth is: 0.3454 s
+//32 threads
+20 iterators: runtime of this algorimth is: 0.2649 s
+//64 threads
+20 iterators: runtime of this algorimth is: 0.2426 s
+//128 threads
+20 iterators: runtime of this algorimth is: 0.2302 s
+//256 threads
+20 iterators: runtime of this algorimth is: 0.2829 s
+```
+
+起初，随着线程数增加，运行时间降低，到`32`线程以上，性能提升变得特别小，资源开销比不上性能提高，到`256`线程的时候性能出现了降低。设置在`32`线程的时候比较好。
+
+
+
+### 编译参数的选择
+
+前面的测试使用了`CFLAGS = -fopenmp -lpthread -mavx2`的编译参数，没有使用编译优化选项`O2`等，下面测试`O2、O3、Ofast`等选项。
+
+#### -O2
 

@@ -1,4 +1,4 @@
-CFLAGS = -fopenmp -lpthread -mavx2
+CFLAGS = -fopenmp -lpthread -mavx2 -Wall -DGETTIMEOFDAY -std=c99 -O2
 
 all : opt1.out opt2.out opt3.out opt4.out opt5.out \
 	  opt6.out opt7.out opt8.out opt9.out opt10.out \

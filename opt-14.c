@@ -1,9 +1,9 @@
 #include "common.h"
 #include <immintrin.h>
 #include <omp.h>
-//using SIMD and loop unrolling 8*1
+//using SIMD and loop unrolling 8*1 and multi-threads
 void benchmark(double *v, double *dest){
-    const int THREAD_NUM = 32;
+    const int THREAD_NUM = 256;
     omp_set_num_threads(THREAD_NUM);
     __m256d sum[THREAD_NUM];
     double ret[THREAD_NUM];
